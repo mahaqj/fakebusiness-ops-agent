@@ -1,0 +1,67 @@
+{
+  "name": "Tool: Get Actions",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "25d91006-631b-42b0-a20a-a4942a836e3f",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "operation": "getAll",
+        "projectRef": "YOUR_SUPABASE_PROJECT_REF",
+        "tableId": "agent_actions",
+        "returnAll": true
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        224,
+        0
+      ],
+      "id": "67e96a04-d319-4585-a7d7-fcf54331bbcf",
+      "name": "Get many rows",
+      "credentials": {
+        "supabaseOAuth2Api": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Supabase account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Get many rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "76ab802e-9365-4bec-a05b-c76645224017",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "nodeGroups": [],
+  "id": "qc1dQooBscVX5jPu",
+  "tags": []
+}

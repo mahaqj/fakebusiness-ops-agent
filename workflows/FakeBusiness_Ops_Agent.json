@@ -1,0 +1,1092 @@
+{
+  "name": "FakeBusiness Ops Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {
+          "responseMode": "responseNodes"
+        }
+      },
+      "id": "86c66bb3-92d9-4d98-8af9-d6c12ba27b3f",
+      "name": "When chat message received",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.5,
+      "position": [
+        -16,
+        -528
+      ]
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "=You are the operations assistant for FakeBusiness, a fictional B2B software company.\n\nToday's date is {{ $now.toFormat('yyyy-MM-dd') }}.\n\nRules:\n- Never invent employees, projects, tasks, deadlines, customers or policies. If you do not have the information, say so.\n- Only state facts that come from your tools or from this conversation.\n- If a request is missing essential details, ask a follow-up question instead of guessing.\n- Clearly separate what you have done, what you plan to do, and what needs human approval.\n- Report failures honestly.\n- Always look up data with your tools before answering questions about the company. Do not answer from memory.\n- Before creating a task: (1) look up the project and assignee ids with your tools, (2) check get_tasks to make sure no task with the same title already exists in that project, (3) check that the assignee's status is \"active\", (4) tell the user in one sentence exactly which task you are about to create, then call create_task.\n- After calling create_task, report whether it succeeded or failed exactly as the tool result says. If it failed, say so and do not retry.\n- create_task, update_task_status and reassign_task each require human approval through the review step. Do all lookups and checks first, tell the user in one sentence exactly what you are about to change (old value to new value), then call the tool directly. The approval request is the confirmation, so do not also ask \"shall I proceed?\" in text. If the human denies, say the change was NOT made and do not retry.\n- When reassigning, pick only active employees. If asked to suggest a replacement, look at get_employees and the project's other tasks, and explain your reasoning.\n- After calling any write tool, report exactly what the tool result says. If it returned an error, say it failed and why. Do not retry on your own.\n- When asked to email someone, look up their email address with get_employees. Never invent an address.\n- You have two email tools. draft_email only saves a draft. send_email actually sends the email. Use send_email when the user asks you to send, email or notify someone. Use draft_email only when the user asks for a draft or to prepare something for review.\n- Whenever you send or draft an email, show the user the subject and body in your reply.\n- Any email to someone outside FakeBusiness (for example a customer contact) must be clearly labelled as needing human approval before it is sent, and must never promise delivery dates, discounts or contract terms.\n- Customer contact details come only from get_customers. Never guess a customer's email address or contact name.\n- send_email and create_event require human approval before they run. After calling either one, wait for the result. If the human denies it, tell the user it was NOT done, do not retry, and offer to revise.\n- To find a meeting time, check get_schedule for every attendee's existing meetings and get_employees for their status. Never propose a time that overlaps an existing meeting. Never include employees whose status is not \"active\". Only propose times between 09:00 and 17:00 UTC on weekdays, and say that all times are in UTC.\n- Do not invent meetings. If get_schedule shows no conflict, say that, and base the claim only on what the tool returned.\n- For any goal that needs more than one action:\n  1. First gather the facts you need with your read tools, one tool call at a time.\n  2. Then write the plan. Every step must be an ACTION to carry out (send an email, create a task, create an event, remind a human). Lookups are not steps.\n  3. Call create_run exactly once for the goal and keep the id it returns. Never call create_run again for the same goal, even if something fails or the user repeats the request. Tell the user instead.\n  4. Call log_action once per step, numbered from 1.\n  5. Show the plan and ask whether to proceed. Do not execute any step until the user approves the plan. Steps that send emails or create events also need tool-level approval.\n- If a step cannot be done with your tools (for example watching a task over time), label it a reminder for a human and say so. Never claim to have done it.\n- Never claim a step is done unless a tool result confirms it.\n- Before create_run, call get_runs. If an open run (planned, in_progress or awaiting_approval) already exists for the same goal, reuse its id and do not create another.\n- A step must change something or notify someone. If you only need to check information, do the check now and do not log it as a step.\n- After executing a step, call update_action with the real outcome (completed, failed, denied or skipped) and a one-sentence note taken from the tool result. If the human denies a tool-level approval, record the step as denied and do not retry. Only update the steps you actually executed.\n- When a plan step is to remind or notify someone, write the subject and message yourself from the task details. Keep it short, professional and friendly, and do not ask the user to write it. Only ask a question if the recipient or the task is unclear.\n- At the end of a goal, call get_runs to read the run, then call update_run with the final status and a summary. Then give the user a final report with four parts: Completed, Failed or denied, Skipped (and why), and Still waiting. Base every line on the tool results, and never describe a step as done if its status is not completed.\n- Never change a step that is already completed, and never overwrite its note. For steps that only check information, run the check with your read tools now and record the real finding in the note. Mark a step skipped only if no tool you have could do it.\n- Before executing, updating or closing a run, call get_actions and use the step descriptions exactly as they appear there. In your final report, copy each step's description and status from get_actions after your updates. Never rewrite or invent step descriptions.\n- A task is \"blocked\" if its status is blocked, OR if it lists a task in depends_on that is not yet done. When reviewing project health, report both kinds, naming the task each one is waiting on and who owns that task.\n- For questions about company policy or procedure, and before actions a policy may restrict, call get_documents and base your answer only on what the documents say. Quote the relevant policy by its title. If no document covers the question, say so.\n- Whenever you record a meeting in the database (after create_event succeeds, or when the user asks you to record one): (1) call get_schedule and check whether a meeting with the same title and start time is already saved. If it is, say it is already recorded and stop, without calling record_meeting or record_attendee. (2) Call get_projects and use the numeric id of the meeting's project. Never leave it empty. If you cannot tell the project, ask the user. (3) Call record_meeting once, then record_attendee once per attendee. The organizer is the person who asked for the meeting if they said so, otherwise the owner of the meeting's project. If neither applies, ask. If create_event was denied or failed, record nothing. If a write tool returns an error, stop, report it, and do not retry.\n- When a tool returns an error, quote the error message in your reply. Do not guess the cause.\n- Never ask the user for ids. Look up task, project and employee ids yourself with get_tasks, get_projects and get_employees, matching by title or name. Only ask the user a question if the lookup finds no match or more than one match.",
+          "maxIterations": 25
+        }
+      },
+      "id": "ce243066-b6b5-494d-997a-391a1a04c325",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1392,
+        -528
+      ]
+    },
+    {
+      "parameters": {
+        "contextWindowLength": 20
+      },
+      "id": "36cbdae1-b8e7-497b-95ef-ce7f7a62d890",
+      "name": "Simple Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        352,
+        -288
+      ]
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Creates ONE new task in the tasks table. Only call this after the user has explicitly approved the exact task details. Requires project_id and assignee_id as numbers, so look those up with get_projects and get_employees first. Never use an assignee whose status is not active.",
+        "authentication": "oAuth2",
+        "projectRef": "YOUR_SUPABASE_PROJECT_REF",
+        "tableId": "tasks",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "project_id",
+              "fieldValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('fieldValues0_Field_Value', `the numeric id of the project from get_projects`, 'string') }}"
+            },
+            {
+              "fieldId": "title",
+              "fieldValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('fieldValues1_Field_Value', `the task title`, 'string') }}"
+            },
+            {
+              "fieldId": "description",
+              "fieldValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('fieldValues2_Field_Value', `a short description of the task`, 'string') }}"
+            },
+            {
+              "fieldId": "priority",
+              "fieldValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('fieldValues3_Field_Value', `one of low, medium, high, critical`, 'string') }}"
+            },
+            {
+              "fieldId": "assignee_id",
+              "fieldValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('fieldValues4_Field_Value', `the numeric id of the assignee from get_employees`, 'string') }}"
+            },
+            {
+              "fieldId": "due_date",
+              "fieldValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('fieldValues5_Field_Value', `the due date as YYYY-MM-DD`, 'string') }}"
+            },
+            {
+              "fieldId": "estimated_hours",
+              "fieldValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('fieldValues6_Field_Value', `the number of hours (optional)`, 'string') }}"
+            }
+          ]
+        }
+      },
+      "id": "aaddf30f-227e-485d-bdc8-5f54041f7e72",
+      "name": "create_task",
+      "type": "n8n-nodes-base.supabaseTool",
+      "typeVersion": 1,
+      "position": [
+        432,
+        -80
+      ],
+      "credentials": {
+        "supabaseOAuth2Api": {
+          "id": "3nzMhpaKmvmrjNRk",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Changes the status of exactly ONE existing task. Only call this after the user has approved the change. Requires the numeric task id from get_tasks and the new status (todo, in_progress, blocked or done).",
+        "authentication": "oAuth2",
+        "operation": "update",
+        "projectRef": "YOUR_SUPABASE_PROJECT_REF",
+        "tableId": "tasks",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('conditions0_Field_Value', ``, 'string') }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "status",
+              "fieldValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('fieldValues0_Field_Value', `new status: one of todo, in_progress, blocked, done`, 'string') }}"
+            }
+          ]
+        }
+      },
+      "id": "c4f4f6ba-c605-4fec-bc0b-3dc1c7c40ca3",
+      "name": "update_task_status",
+      "type": "n8n-nodes-base.supabaseTool",
+      "typeVersion": 1,
+      "position": [
+        560,
+        -80
+      ],
+      "credentials": {
+        "supabaseOAuth2Api": {
+          "id": "3nzMhpaKmvmrjNRk",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Changes the assignee of exactly ONE existing task. Only call this after the user has approved the change. Requires the numeric task id from get_tasks and the numeric employee id from get_employees. Never choose an employee whose status is not active.",
+        "authentication": "oAuth2",
+        "operation": "update",
+        "projectRef": "YOUR_SUPABASE_PROJECT_REF",
+        "tableId": "tasks",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('conditions0_Field_Value', ``, 'string') }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "assignee_id",
+              "fieldValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('fieldValues0_Field_Value', `numeric id of the new assignee from get_employees. Must be an active employee.`, 'string') }}"
+            }
+          ]
+        }
+      },
+      "id": "63fe9453-aad7-41aa-b1b7-caeec1497bdc",
+      "name": "reassign_task",
+      "type": "n8n-nodes-base.supabaseTool",
+      "typeVersion": 1,
+      "position": [
+        688,
+        -80
+      ],
+      "credentials": {
+        "supabaseOAuth2Api": {
+          "id": "3nzMhpaKmvmrjNRk",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Saves ONE email as a Gmail draft. It does NOT send anything. Use it only when the user explicitly asks for a draft or for something to review before sending. If the user asks to send, email or notify someone, use send_email instead. Look up the recipient's email with get_employees first. Never guess an email address.",
+        "resource": "draft",
+        "subject": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Subject', `the email subject line`, 'string') }}",
+        "message": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message', `the email body in plain text`, 'string') }}",
+        "options": {
+          "sendTo": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('To_Email', `recipient email address, taken from get_employees`, 'string') }}"
+        }
+      },
+      "id": "8da155d9-2045-4880-9e8c-4c8f2cc818a2",
+      "name": "draft_email",
+      "type": "n8n-nodes-base.gmailTool",
+      "typeVersion": 2.2,
+      "position": [
+        480,
+        -288
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "BV0jrFh5ffPZKCzF",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Sends ONE real email from the FakeBusiness test Gmail account. A human must approve every call before it runs. Look up the recipient's address with get_employees or get_customers first. Never guess an address. Never promise delivery dates, discounts or contract terms.",
+        "sendTo": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('To', `recipient email address, taken from get_employees or get_customers`, 'string') }}",
+        "subject": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Subject', `the email subject line`, 'string') }}",
+        "message": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message', `the email body in plain text`, 'string') }}",
+        "options": {}
+      },
+      "id": "da2089e7-4b39-49ea-bbd0-3ca8a3155743",
+      "name": "send_email",
+      "type": "n8n-nodes-base.gmailTool",
+      "typeVersion": 2.2,
+      "position": [
+        816,
+        -80
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "BV0jrFh5ffPZKCzF",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Creates ONE event on the FakeBusiness test calendar. A human must approve every call before it runs. Only call it after checking get_schedule and get_employees for conflicts and availability. Times must be ISO 8601 in UTC. Put attendee full names in the description, not as email attendees.",
+        "calendar": {
+          "__rl": true,
+          "value": "YOUR_TEST_CALENDAR_ID@group.calendar.google.com",
+          "mode": "list",
+          "cachedResultName": "FakeBusiness Test"
+        },
+        "start": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Start', `event start time as an ISO 8601 date-time in UTC, e.g. 2026-11-23T10:00:00Z`, 'string') }}",
+        "end": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('End', `event end time in the same format`, 'string') }}",
+        "additionalFields": {
+          "description": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Description', `who should attend (full names) and the meeting\u2019s purpose`, 'string') }}",
+          "summary": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Summary', `short meeting title`, 'string') }}"
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.4,
+      "position": [
+        944,
+        -80
+      ],
+      "id": "6120a372-fe92-489d-b771-c85bc8d06f95",
+      "name": "create_event",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "OarRauDjEMYJlfvK",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "message": "=The agent wants to run this tool: {{ $tool.name }}\n\nInput:\n{{ JSON.stringify($tool.parameters, null, 2) }}",
+        "approvalOptions": {
+          "values": {
+            "approvalType": "double"
+          }
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatHitlTool",
+      "typeVersion": 1.3,
+      "position": [
+        608,
+        -288
+      ],
+      "id": "92687a46-3137-4871-882d-d6c4367463c0",
+      "name": "Chat"
+    },
+    {
+      "parameters": {
+        "message": "={{ $json.output }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chat",
+      "typeVersion": 1.3,
+      "position": [
+        2752,
+        -528
+      ],
+      "id": "0db1f56c-6f09-477b-afe6-8421f7a8f40e",
+      "name": "Chat1"
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Records a new multi-step goal in the agent_runs table and returns its id. Call this ONCE at the start of any goal that needs more than one action, before planning the steps.",
+        "authentication": "oAuth2",
+        "projectRef": "YOUR_SUPABASE_PROJECT_REF",
+        "tableId": "agent_runs",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "goal",
+              "fieldValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('fieldValues0_Field_Value', `the user\u2019s objective in one sentence`, 'string') }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabaseTool",
+      "typeVersion": 1,
+      "position": [
+        896,
+        -288
+      ],
+      "id": "551327ff-065e-435f-b6c8-42d85592b99e",
+      "name": "create_run",
+      "credentials": {
+        "supabaseOAuth2Api": {
+          "id": "3nzMhpaKmvmrjNRk",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Records ONE planned step of a run in agent_actions with status planned. Call it once per step after create_run. Use the run id that create_run returned.",
+        "authentication": "oAuth2",
+        "projectRef": "YOUR_SUPABASE_PROJECT_REF",
+        "tableId": "agent_actions",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "run_id",
+              "fieldValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('fieldValues0_Field_Value', `the id returned by create_run`, 'string') }}"
+            },
+            {
+              "fieldId": "step_number",
+              "fieldValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('fieldValues1_Field_Value', `the step\u2019s position in the plan, starting at 1`, 'string') }}"
+            },
+            {
+              "fieldId": "description",
+              "fieldValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('fieldValues2_Field_Value', `what this step does, in one sentence`, 'string') }}"
+            },
+            {
+              "fieldId": "tool_name",
+              "fieldValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('fieldValues3_Field_Value', `the tool that will perform this step, or none`, 'string') }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabaseTool",
+      "typeVersion": 1,
+      "position": [
+        1024,
+        -288
+      ],
+      "id": "b6e6246b-b3fc-4b1c-b512-8db7386e8b9c",
+      "name": "log_action",
+      "credentials": {
+        "supabaseOAuth2Api": {
+          "id": "3nzMhpaKmvmrjNRk",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Updates ONE step of a run in agent_actions. Call it after each step finishes, using completed, failed, denied or skipped. The note must come from the actual tool result.",
+        "authentication": "oAuth2",
+        "operation": "update",
+        "projectRef": "YOUR_SUPABASE_PROJECT_REF",
+        "tableId": "agent_actions",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "run_id",
+              "condition": "eq",
+              "keyValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('conditions0_Field_Value', `the run id from create_run or get_runs`, 'string') }}"
+            },
+            {
+              "keyName": "step_number",
+              "condition": "eq",
+              "keyValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('conditions1_Field_Value', `the step number to update`, 'string') }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "status",
+              "fieldValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('fieldValues0_Field_Value', `one of: completed, failed, denied, skipped`, 'string') }}"
+            },
+            {
+              "fieldId": "result_note",
+              "fieldValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('fieldValues1_Field_Value', `one sentence on what happened, taken from the actual tool result`, 'string') }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabaseTool",
+      "typeVersion": 1,
+      "position": [
+        1152,
+        -288
+      ],
+      "id": "aeb5263d-43ce-4b2b-beab-1e7858e73357",
+      "name": "update_action",
+      "credentials": {
+        "supabaseOAuth2Api": {
+          "id": "3nzMhpaKmvmrjNRk",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Updates ONE run in agent_runs. Call it at the end of a goal to set the run status and write the final summary. Use completed only if every step is completed or skipped, failed if any step failed, and cancelled if the user stopped it.",
+        "authentication": "oAuth2",
+        "operation": "update",
+        "projectRef": "YOUR_SUPABASE_PROJECT_REF",
+        "tableId": "agent_runs",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('conditions0_Field_Value', `the run id`, 'string') }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "status",
+              "fieldValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('fieldValues0_Field_Value', `one of: in_progress, completed, failed, cancelled`, 'string') }}"
+            },
+            {
+              "fieldId": "summary",
+              "fieldValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('fieldValues1_Field_Value', `the final execution report in a few sentences, based only on what the tools confirmed`, 'string') }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabaseTool",
+      "typeVersion": 1,
+      "position": [
+        1280,
+        -288
+      ],
+      "id": "3ce90adf-445a-4157-8bd3-4efa4a758aa6",
+      "name": "update_run",
+      "credentials": {
+        "supabaseOAuth2Api": {
+          "id": "3nzMhpaKmvmrjNRk",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Saves ONE meeting in the company meetings table and returns its id. Call it only after create_event has succeeded, using the same title and start time. Never call it for a meeting that was not created.",
+        "authentication": "oAuth2",
+        "projectRef": "YOUR_SUPABASE_PROJECT_REF",
+        "tableId": "meetings",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "title",
+              "fieldValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('fieldValues0_Field_Value', `the meeting title`, 'string') }}"
+            },
+            {
+              "fieldId": "project_id",
+              "fieldValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('fieldValues1_Field_Value', `numeric project id. Always look it up with get_projects first. Never leave it empty.`, 'string') }}"
+            },
+            {
+              "fieldId": "organizer_id",
+              "fieldValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('fieldValues2_Field_Value', `numeric employee id of the organizer from get_employees`, 'string') }}"
+            },
+            {
+              "fieldId": "scheduled_at",
+              "fieldValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('fieldValues3_Field_Value', `start time as an ISO 8601 UTC date-time, e.g. 2026-11-24T10:00:00Z`, 'string') }}"
+            },
+            {
+              "fieldId": "duration_minutes",
+              "fieldValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('fieldValues4_Field_Value', `meeting length in minutes`, 'string') }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabaseTool",
+      "typeVersion": 1,
+      "position": [
+        1536,
+        -288
+      ],
+      "id": "264dbd5e-aac8-41a6-aaef-c5273e95d1f1",
+      "name": "record_meeting",
+      "credentials": {
+        "supabaseOAuth2Api": {
+          "id": "3nzMhpaKmvmrjNRk",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "description": "Returns all FakeBusiness employees with full name, email, job title, department name, manager name, status (active, on_leave, left) and weekly capacity hours.",
+        "workflowId": {
+          "__rl": true,
+          "value": "AoBz2yH3449wwHSx",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/AoBz2yH3449wwHSx",
+          "cachedResultName": "Tool: Get Employees"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        1664,
+        -288
+      ],
+      "id": "7a754870-52f5-4ff1-b79c-ba9a3f46f383",
+      "name": "get_employees"
+    },
+    {
+      "parameters": {
+        "description": "Returns every FakeBusiness project with status, priority, deadline, days until deadline, budget, spent, percent of budget used, owner, customer, customer status, and task counts (total, done, overdue, blocked).",
+        "workflowId": {
+          "__rl": true,
+          "value": "IojtKtMkfCmYz3kZ",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/IojtKtMkfCmYz3kZ",
+          "cachedResultName": "Tool: Get Projects"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        1792,
+        -288
+      ],
+      "id": "54816b59-cb22-429f-88ae-347ed7af25e8",
+      "name": "get_projects"
+    },
+    {
+      "parameters": {
+        "description": "Returns every FakeBusiness task with its project, title, status, priority, assignee, assignee status (active, on_leave, left), due date, whether it is overdue, days overdue, estimated hours and the tasks it depends on (depends_on).",
+        "workflowId": {
+          "__rl": true,
+          "value": "92LEiMFBIhvjhC5n",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/92LEiMFBIhvjhC5n",
+          "cachedResultName": "Tool: Get Tasks"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        2176,
+        -288
+      ],
+      "id": "2816e689-7871-4e55-94d4-36ce218cc4c6",
+      "name": "get_tasks"
+    },
+    {
+      "parameters": {
+        "description": "Returns all FakeBusiness customers with company name, industry, contact name, contact email, account tier, status (active, at_risk, churned), annual contract value, account manager, and their projects. Use it to find customer contact emails and account health.",
+        "workflowId": {
+          "__rl": true,
+          "value": "RpEDfWaktOTpf0bY",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/RpEDfWaktOTpf0bY",
+          "cachedResultName": "Tool: Get Customers"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        2048,
+        -288
+      ],
+      "id": "a9accba5-ffb5-441d-a2ca-e2ccf4525b52",
+      "name": "get_customers"
+    },
+    {
+      "parameters": {
+        "description": "Returns the scheduled meetings of each FakeBusiness employee: employee name, employee status (active, on_leave, left), meeting title, start time, end time (all in UTC), duration, and whether the meeting is upcoming. Use it to find scheduling conflicts and free times before proposing a meeting, and to check whether a meeting is already recorded.",
+        "workflowId": {
+          "__rl": true,
+          "value": "UVTVGDSGSqzUvFkz",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/UVTVGDSGSqzUvFkz",
+          "cachedResultName": "Tool: Get Schedule"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        2432,
+        -288
+      ],
+      "id": "6b159f9c-9362-4db4-b475-8f6021b2d017",
+      "name": "get_schedule"
+    },
+    {
+      "parameters": {
+        "description": "Returns all recorded runs (id, goal, status, summary). Call it before create_run to check whether an open run (planned, in_progress or awaiting_approval) already exists for the same goal.",
+        "workflowId": {
+          "__rl": true,
+          "value": "s48pVIBfPkl4qLVK",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/s48pVIBfPkl4qLVK",
+          "cachedResultName": "Tool: Get Runs"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        1920,
+        -288
+      ],
+      "id": "9c971c4d-9a57-4e23-b2b0-6a0125bfda21",
+      "name": "get_runs"
+    },
+    {
+      "parameters": {
+        "description": "Returns all recorded steps of all runs (run_id, step_number, description, tool_name, status, result_note). Call it before executing or closing a run to read the real step list. Never describe a step from memory.",
+        "workflowId": {
+          "__rl": true,
+          "value": "qc1dQooBscVX5jPu",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/qc1dQooBscVX5jPu",
+          "cachedResultName": "Tool: Get Actions"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        2304,
+        -288
+      ],
+      "id": "c1769668-e3d4-4395-a095-b8a38c51388c",
+      "name": "get_actions"
+    },
+    {
+      "parameters": {
+        "description": "Returns FakeBusiness internal documents: policies, procedures, project briefs, product docs and meeting notes (title, doc_type, content). Call it when the user asks about company policy or procedure, or before any action that a policy might restrict (time off, external email, deadlines, task assignment).",
+        "workflowId": {
+          "__rl": true,
+          "value": "4pNWRXceoxr8tZbm",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/4pNWRXceoxr8tZbm",
+          "cachedResultName": "Tool: Get Documents"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        2560,
+        -288
+      ],
+      "id": "4642156f-1c16-47e9-a39b-2a2d0c4408a1",
+      "name": "get_documents"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-pro",
+        "options": {}
+      },
+      "id": "ca3fc85c-1e9e-4ee8-b9c1-09321bf0865e",
+      "name": "Google Gemini Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        224,
+        -288
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": null,
+          "name": "",
+          "__aiGatewayManaged": true
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Adds ONE attendee to a saved meeting. Call it once per attendee after record_meeting. Never add an employee whose status is not active.",
+        "authentication": "oAuth2",
+        "projectRef": "YOUR_SUPABASE_PROJECT_REF",
+        "tableId": "meeting_attendees",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "meeting_id",
+              "fieldValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('fieldValues0_Field_Value', `the id returned by record_meeting`, 'string') }}"
+            },
+            {
+              "fieldId": "employee_id",
+              "fieldValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('fieldValues1_Field_Value', `numeric employee id of one attendee from get_employees`, 'string') }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabaseTool",
+      "typeVersion": 1,
+      "position": [
+        1408,
+        -288
+      ],
+      "id": "0c431c85-9c6f-42e4-92ad-e7c1c3a8ad8e",
+      "name": "record_attendee",
+      "credentials": {
+        "supabaseOAuth2Api": {
+          "id": "3nzMhpaKmvmrjNRk",
+          "name": "Supabase account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "create_task": {
+      "ai_tool": [
+        [
+          {
+            "node": "Chat",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "update_task_status": {
+      "ai_tool": [
+        [
+          {
+            "node": "Chat",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "reassign_task": {
+      "ai_tool": [
+        [
+          {
+            "node": "Chat",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "draft_email": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "send_email": {
+      "ai_tool": [
+        [
+          {
+            "node": "Chat",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "create_event": {
+      "ai_tool": [
+        [
+          {
+            "node": "Chat",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chat": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Chat1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "create_run": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "log_action": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "update_action": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "update_run": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "record_meeting": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get_employees": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get_projects": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get_runs": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get_customers": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get_tasks": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get_actions": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get_schedule": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get_documents": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "record_attendee": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "f9M5LgYa1ojMUbAj",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "5bda58b9-ccee-483e-a801-bcc90f3c03d7",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "nodeGroups": [],
+  "id": "cROqGI2SMWjKN0y8",
+  "tags": []
+}

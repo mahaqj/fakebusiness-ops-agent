@@ -1,0 +1,4 @@
+﻿*.raw.json
+.env
+*.env
+.DS_Store

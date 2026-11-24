@@ -1,0 +1,67 @@
+{
+  "name": "Tool: Get Schedule",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "dc15bea2-d205-42d4-8413-1e2da41b9c81",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "operation": "getAll",
+        "projectRef": "YOUR_SUPABASE_PROJECT_REF",
+        "tableId": "employee_schedule",
+        "returnAll": true
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        224,
+        0
+      ],
+      "id": "512a817f-f4f3-4fce-bc3d-d9a0292318b5",
+      "name": "Get many rows",
+      "credentials": {
+        "supabaseOAuth2Api": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Supabase account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Get many rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "1c115bc8-967d-46f3-bbb6-aaa52b8309c7",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "nodeGroups": [],
+  "id": "UVTVGDSGSqzUvFkz",
+  "tags": []
+}
