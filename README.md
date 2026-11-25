@@ -6,6 +6,8 @@ It is not a chatbot over a database. It reads and writes real records, and every
 
 > All company data is fictional (emails use the reserved `.example` domain). Gmail and Google Calendar are real integrations and were tested with a throwaway account and a test calendar.
 
+![How the agent works: goal, agent, tools, approval gate, database](docs/architecture.svg)
+
 ## Architecture
 
 ```
@@ -65,14 +67,25 @@ n8n (Cloud), Supabase PostgreSQL, Google Gemini, Gmail, Google Calendar, Discord
 
 ## Setup
 
-1. **Supabase.** Create a project, then run the SQL files in `sql/` in this order: schema, seed data, views, agent tables, triggers, audit log. Enable row level security and grant `service_role` access to each table. If n8n reports "permission denied", use the legacy `service_role` key in the credential.
+1. **Supabase.** Create a project, then open the SQL Editor and run these files from `sql/` in order. The order matters, because later files depend on earlier ones:
+   1. `01_schema.sql`: core tables, row level security and `service_role` grants
+   2. `02_seed_company.sql`: departments, employees, customers
+   3. `03_seed_projects_tasks.sql`: projects, team members, tasks, dependencies
+   4. `04_seed_meetings_documents.sql`: meetings, attendees, policy and project documents
+   5. `05_views.sql`: the pre-joined views the agent reads
+   6. `06_task_triggers.sql`: the active-assignee check and `completed_at` sync (run after the seed data, because some seeded tasks belong to an employee on leave)
+   7. `07_agent_tables.sql`: `agent_runs` and `agent_actions`
+   8. `08_meeting_guard.sql`: duplicate-meeting protection
+   9. `09_audit_log.sql`: the audit log and its triggers (run last, so the seed data is not logged)
+
+   If n8n reports "permission denied", use the legacy `service_role` key in the Supabase credential.
 2. **n8n.** Import the workflows from `workflows/`. Credentials are not included in the exports, so create these yourself: Supabase, Google Gemini, Gmail, Google Calendar, Discord webhook. After importing:
    - Import the `Tool: Get ...` sub-workflows first, then open each of the 8 read-tool nodes in the agent (`get_employees`, `get_projects`, `get_tasks`, `get_customers`, `get_schedule`, `get_runs`, `get_actions`, `get_documents`) and re-select its sub-workflow, because the workflow IDs differ in your instance.
    - Replace the placeholders `YOUR_SUPABASE_PROJECT_REF` (in each Supabase node) and `YOUR_TEST_CALENDAR_ID` (in `create_event`) with your own values.
 3. **Chat Trigger.** Set **Response Mode** to **Using Response Nodes**, and keep the Chat node after the agent that sends `{{ $json.output }}`.
 4. **Agent settings.** Set **Simple Memory** to a context window of 20 and **Max Iterations** to 25.
 5. **Approvals.** Plug `send_email`, `create_event`, `create_task`, `update_task_status` and `reassign_task` into the Chat review node, not directly into the agent.
-6. **Error alerts.** Publish the error workflow and select it under the agent workflow's settings.
+6. **Error alerts.** Publish the error workflow and select it under the agent workflow's settings. The imported agent still points at the error workflow's ID from the original instance, so open the agent's Settings after importing and re-select it.
 7. **Test accounts.** Use a test Gmail account and a separate test calendar. Seeded addresses are fake, so point one employee at your test inbox to see an email arrive.
 
 Paste the system message from `docs/system-message.md` into the AI Agent node.
@@ -99,7 +112,24 @@ Paste the system message from `docs/system-message.md` into the AI Agent node.
 ## Repository layout
 
 ```
-workflows/   n8n exports (agent, error alert, tool sub-workflows)
-sql/         schema, seed data, views, triggers, audit log
-docs/        system-message.md
+README.md
+workflows/
+  FakeBusiness_Ops_Agent.json        main agent
+  FakeBusiness_Error_Alert.json      Discord alert for failed runs
+  tools/                             8 read-tool sub-workflows
+    Tool_Get_Employees.json
+    Tool_Get_Projects.json
+    Tool_Get_Tasks.json
+    Tool_Get_Customers.json
+    Tool_Get_Schedule.json
+    Tool_Get_Runs.json
+    Tool_Get_Actions.json
+    Tool_Get_Documents.json
+sql/
+  01_schema.sql ... 09_audit_log.sql   run in numeric order
+docs/
+  system-message.md                  paste into the AI Agent node
+  architecture.svg                   illustration used at the top of this README
 ```
+
+The exported workflows have identifiers (Supabase project reference, test calendar ID, credential IDs) replaced with placeholders such as `YOUR_SUPABASE_PROJECT_REF`, and are set to inactive.
